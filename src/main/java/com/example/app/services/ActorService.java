@@ -25,7 +25,7 @@ public class ActorService {
         String urlString = apiBaseUri + "search/person";
         urlString += "?api_key=" + apiKey;
         urlString += (lang != null) ? ("&language=" + lang) : "";
-        urlString += (region != null) ? ("&region=" + region) : "";
+//        urlString += (region != null) ? ("&region=" + region) : "";
         urlString += (query != null) ? ("&query=" + query) : "";
         urlString += (pageNo != null) ? ("&page=" + pageNo) : "";
 
