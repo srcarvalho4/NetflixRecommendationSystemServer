@@ -11,21 +11,24 @@ import java.util.ArrayList;
 import java.util.List;
 
 @RestController
-@CrossOrigin(origins = "*", allowCredentials = "true")
+@CrossOrigin(origins = "*")
 public class MovieController {
 
     private MovieRepository movieRepository;
     private FanRepository fanRepository;
     private CriticRepository criticRepository;
     private ReviewRepository reviewRepository;
+    private ActorRepository actorRepository;
 
     @Autowired
     public MovieController(MovieRepository movieRepository, FanRepository fanRepository,
-                           CriticRepository criticRepository, ReviewRepository reviewRepository) {
+                           CriticRepository criticRepository, ReviewRepository reviewRepository,
+                           ActorRepository actorRepository) {
         this.movieRepository = movieRepository;
         this.fanRepository = fanRepository;
         this.criticRepository = criticRepository;
         this.reviewRepository = reviewRepository;
+        this.actorRepository = actorRepository;
     }
 
     /**
@@ -34,16 +37,12 @@ public class MovieController {
      * @return a list of MovieSearchResults
      */
     @GetMapping("/api/search/movies")
-    public List<Movie> searchMovies(@RequestParam("query") String query) {
-        List<Movie> result = new ArrayList<>();
+    List<MovieSearchResult> searchMovies(@RequestParam("query") String query) {
+        List<MovieSearchResult> result = new ArrayList<>();
 
         if(query.length() != 0) {
             result = MovieService.getMovies(GetMovieType.SEARCH, "en-US", null,
-                    query.replace(" ","+"), "1", null);
-
-            for(Movie m : result) {
-                movieRepository.save(m);
-            }
+                    query.replace(" ","+"), "1");
         }
 
         return result;
@@ -55,16 +54,10 @@ public class MovieController {
      * @return a list of MovieSearchResults
      */
     @GetMapping("/api/movies/top_rated")
-    public List<Movie> getTopRatedMovies(@RequestParam(value = "region", defaultValue = "us") String region,
+    List<MovieSearchResult> getTopRatedMovies(@RequestParam(value = "region", defaultValue = "us") String region,
                                               @RequestParam(value = "lang", defaultValue = "en-US") String lang,
                                               @RequestParam(value = "page", defaultValue = "1") String pageNo) {
-        List<Movie> result = MovieService.getMovies(GetMovieType.TOP_RATED, lang, region, null, pageNo, null);
-
-        for(Movie m : result) {
-            movieRepository.save(m);
-        }
-
-        return result;
+        return MovieService.getMovies(GetMovieType.TOP_RATED, lang, region, null, pageNo);
     }
 
     /**
@@ -73,16 +66,10 @@ public class MovieController {
      * @return a list of MovieSearchResults
      */
     @GetMapping("/api/movies/now_playing")
-    public List<Movie> getNowPlayingMovies(@RequestParam(value = "region", defaultValue = "us") String region,
+    List<MovieSearchResult> getNowPlayingMovies(@RequestParam(value = "region", defaultValue = "us") String region,
                                                 @RequestParam(value = "lang", defaultValue = "en-US") String lang,
                                                 @RequestParam(value = "page", defaultValue = "1") String pageNo) {
-        List<Movie> result = MovieService.getMovies(GetMovieType.NOW_PLAYING, lang, region, null, pageNo, null);
-
-        for(Movie m : result) {
-            movieRepository.save(m);
-        }
-
-        return result;
+        return MovieService.getMovies(GetMovieType.NOW_PLAYING, lang, region,null, pageNo);
     }
 
     /**
@@ -91,16 +78,10 @@ public class MovieController {
      * @return a list of MovieSearchResults
      */
     @GetMapping("/api/movies/popular")
-    public List<Movie> getPopularMovies(@RequestParam(value = "region", defaultValue = "us") String region,
+    List<MovieSearchResult> getPopularMovies(@RequestParam(value = "region", defaultValue = "us") String region,
                                              @RequestParam(value = "lang", defaultValue = "en-US") String lang,
                                              @RequestParam(value = "page", defaultValue = "1") String pageNo) {
-        List<Movie> result = MovieService.getMovies(GetMovieType.POPULAR, lang, region, null, pageNo, null);
-
-        for(Movie m : result) {
-            movieRepository.save(m);
-        }
-
-        return result;
+        return MovieService.getMovies(GetMovieType.POPULAR, lang, region,null, pageNo);
     }
 
     /**
@@ -109,52 +90,10 @@ public class MovieController {
      * @return a list of MovieSearchResults
      */
     @GetMapping("/api/movies/upcoming")
-    public List<Movie> getUpcomingMovies(@RequestParam(value = "region", defaultValue = "us") String region,
+    List<MovieSearchResult> getUpcomingMovies(@RequestParam(value = "region", defaultValue = "us") String region,
                                               @RequestParam(value = "lang", defaultValue = "en-US") String lang,
                                               @RequestParam(value = "page", defaultValue = "1") String pageNo) {
-        List<Movie> result = MovieService.getMovies(GetMovieType.UPCOMING, lang, region, null, pageNo, null);
-
-        for(Movie m : result) {
-            movieRepository.save(m);
-        }
-
-        return result;
-    }
-
-    /**
-     * Get list of recommended movies for given Fan
-     * @param id fan id
-     * @return list of Movies
-     */
-    @GetMapping("/api/fan/{id}/movies/recommended")
-    public List<Movie> getMoviesRecommendedForFan(@PathVariable("id") Long id) {
-        List<Movie> result = new ArrayList<>();
-        Fan fan = fanRepository.findById(id).orElse(null);
-
-        if(fan != null) {
-            List<Critic> criticsFollowed = fan.getCriticsFollowed();
-            List<Fan> fansFollowed = fan.getFollowingFans();
-
-            // Add movies recommended by followed critics if not already liked
-            for(Critic c: criticsFollowed) {
-                for(Movie recommendedMovie: c.getRecommendedMovies()) {
-                    if(!fan.getLikesMovies().contains(recommendedMovie)) {
-                        result.add(recommendedMovie);
-                    }
-                }
-            }
-
-            // Add movies liked by followed fans if not already liked
-            for(Fan f: fansFollowed) {
-                for(Movie likedMovie: f.getLikesMovies()) {
-                    if(!fan.getLikesMovies().contains(likedMovie)) {
-                        result.add(likedMovie);
-                    }
-                }
-            }
-        }
-
-        return result;
+        return MovieService.getMovies(GetMovieType.UPCOMING, lang, region,null, pageNo);
     }
 
     /**
@@ -164,10 +103,10 @@ public class MovieController {
      */
     @GetMapping("/api/movies/{id}")
     Movie findMovieById(@PathVariable("id") Long id) {
-        Movie m = MovieService.findMovieById(id);
-        movieRepository.save(m);
-        return m;
+        return MovieService.findMovieById(id);
     }
+
+
 
     @GetMapping("/api/movies")
     public List<Movie> findAllMovie(){
@@ -193,7 +132,7 @@ public class MovieController {
     }
 
     @GetMapping("/api/check/like/fan/{username}/movie/{movieId}")
-    public Boolean checkIfFanLikesMovie(
+    public Fan checkIfFanLikesMovie(
             @PathVariable("username") String username,
             @PathVariable("movieId") long movieId) {
         if(movieRepository.findById(movieId).isPresent()
@@ -204,11 +143,24 @@ public class MovieController {
 
             if(fansWhoLike.contains(fan))
             {
-                return true;
+                return fan;
             }
         }
 
-        return false;
+        return null;
+    }
+
+    @PostMapping("/api/cast/movie/{movieId}/actor/{actorId}")
+    public void castActor(
+            @PathVariable("movieId") long movieId,
+            @PathVariable("actorId") long actorId){
+        if(movieRepository.findById(movieId).isPresent()
+                && actorRepository.findById(actorId).isPresent()){
+            Movie movie = movieRepository.findById(movieId).get();
+            Actor actor = actorRepository.findById(actorId).get();
+            movie.castActors(actor);
+            movieRepository.save(movie);
+        }
     }
 
     @PostMapping("/api/dislike/movie/{movieId}/fan/{username}")

@@ -5,14 +5,13 @@ import com.example.app.models.Fan;
 import com.example.app.models.Movie;
 import com.example.app.repositories.ActorRepository;
 import com.example.app.repositories.FanRepository;
-import com.example.app.services.ActorService;
 import com.example.app.services.Utils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@CrossOrigin(origins = "*", allowCredentials = "true")
+@CrossOrigin(origins = "*")
 public class ActorController extends Utils {
 
     private ActorRepository actorRepository;
@@ -22,20 +21,6 @@ public class ActorController extends Utils {
     public ActorController(ActorRepository actorRepository, FanRepository fanRepository) {
         this.actorRepository = actorRepository;
         this.fanRepository = fanRepository;
-    }
-
-    @GetMapping("/api/search/actors")
-    public List<Actor> searchActors(@RequestParam("query") String query,
-                                    @RequestParam(value = "region", defaultValue = "us") String region,
-                                    @RequestParam(value = "lang", defaultValue = "en-US") String lang,
-                                    @RequestParam(value = "page", defaultValue = "1") String pageNo) {
-        List<Actor> result = ActorService.searchActors(query, lang, region, pageNo);
-
-        for(Actor a : result) {
-            actorRepository.save(a);
-        }
-
-        return result;
     }
 
     @PostMapping("/api/actor")
@@ -50,8 +35,10 @@ public class ActorController extends Utils {
 
     @GetMapping("/api/actor/{actorId}")
     public Actor findActorById(@PathVariable(name = "actorId") long actorId) {
-        actorRepository.save(ActorService.findActorById(actorId));
-        return actorRepository.findActorById(actorId).orElse(null);
+        if(actorRepository.findById(actorId).isPresent()){
+            return actorRepository.findById(actorId).get();
+        }
+        return null;
     }
 
     @PostMapping("/api/follow/actor/{actorId}/fan/{username}")
@@ -89,7 +76,7 @@ public class ActorController extends Utils {
     }
 
     @GetMapping("/api/check/follow/fan/{username}/actor/{actorId}")
-    public Boolean checkIfFanFollowsActor(
+    public Fan checkIfFanFollowsActor(
             @PathVariable("username") String username,
             @PathVariable("actorId") long actorId) {
         if(actorRepository.findById(actorId).isPresent()
@@ -100,11 +87,11 @@ public class ActorController extends Utils {
 
             if(fansWhoFollowActor.contains(fan))
             {
-                return true;
+                return fan;
             }
         }
 
-        return false;
+        return null;
     }
 
 }

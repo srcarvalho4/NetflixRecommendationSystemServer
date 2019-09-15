@@ -6,8 +6,7 @@ public enum GetMovieType {
     TOP_RATED("top_rated"),
     UPCOMING("upcoming"),
     NOW_PLAYING("now_playing"),
-    SEARCH("search"),
-    SIMILAR("similar");
+    SEARCH("search");
 
     private final String getMovieType;
 
@@ -19,5 +18,4 @@ public enum GetMovieType {
     public String toString() {
         return getMovieType;
     }
-
 }
