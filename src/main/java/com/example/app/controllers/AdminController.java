@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@CrossOrigin(origins = "*", allowCredentials = "true")
+@CrossOrigin(origins = "*")
 public class AdminController {
 
     private AdminRepository adminRepository;
@@ -17,17 +17,20 @@ public class AdminController {
     private FanRepository fanRepository;
     private MovieRepository movieRepository;
     private ReviewRepository reviewRepository;
+    private UserRepository userRepository;
 
     @Autowired
     public AdminController(AdminRepository adminRepository, ActorRepository actorRepository,
                            CriticRepository criticRepository, FanRepository fanRepository,
-                           MovieRepository movieRepository, ReviewRepository reviewRepository) {
+                           MovieRepository movieRepository, ReviewRepository reviewRepository,
+                           UserRepository userRepository) {
         this.adminRepository = adminRepository;
         this.actorRepository = actorRepository;
         this.criticRepository = criticRepository;
         this.fanRepository = fanRepository;
         this.movieRepository = movieRepository;
         this.reviewRepository = reviewRepository;
+        this.userRepository = userRepository;
     }
 
     @GetMapping("/api/admin")

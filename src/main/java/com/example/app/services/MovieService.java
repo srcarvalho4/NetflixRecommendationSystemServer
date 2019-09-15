@@ -1,6 +1,7 @@
 package com.example.app.services;
 
 import com.example.app.models.Movie;
+import com.example.app.models.MovieSearchResult;
 import com.example.app.types.GetMovieType;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -13,8 +14,12 @@ import java.util.Scanner;
 
 public class MovieService {
 
+    // TODO: Read from application.properties
+//    @Value("${tmdb.api.key}")
     private static String apiKey = "5d837b926bca6fa72fb4cf1b287a1bfa";
+//    @Value("${tmdb.api.base.uri}")
     private static String apiBaseUri = "https://api.themoviedb.org/3/";
+//    @Value("${tmdb.image.server}")
     private static String imageServerPath = "https://image.tmdb.org/t/p/w500";
 
     private MovieService() { }
@@ -28,24 +33,14 @@ public class MovieService {
      * @param pageNo
      * @return
      */
-    public static List<Movie> getMovies(GetMovieType getMovieType, String lang, String region, String query,
-                                                    String pageNo, Long movieId) {
-        String urlString = apiBaseUri;
+    public static List<MovieSearchResult> getMovies(GetMovieType getMovieType, String lang, String region, String query,
+                                                    String pageNo) {
+        String urlString = getMovieType.equals(GetMovieType.SEARCH) ?
+                (apiBaseUri + getMovieType.toString() + "/movie?api_key=" + apiKey) :
+                (apiBaseUri + "movie/" + getMovieType.toString() + "?api_key=" + apiKey);
 
-        switch(getMovieType) {
-            case SEARCH:
-                urlString += getMovieType.toString() + "/movie";
-                break;
-            case SIMILAR:
-                urlString += "movie/" + movieId + "/" + getMovieType.toString();
-                break;
-            default:
-                urlString += "movie/" + getMovieType.toString();
-        }
-
-        urlString += "?api_key=" + apiKey;
         urlString += (lang != null) ? ("&language=" + lang) : "";
-//        urlString += (region != null) ? ("&region=" + region) : "";
+        urlString += (region != null) ? ("&region=" + region) : "";
         urlString += (query != null) ? ("&query=" + query) : "";
         urlString += (pageNo != null) ? ("&page=" + pageNo) : "";
 
@@ -57,8 +52,8 @@ public class MovieService {
      * @param urlString
      * @return
      */
-    private static List<Movie> getMovies(String urlString) {
-        List<Movie> searchResults = new ArrayList<>();
+    private static List<MovieSearchResult> getMovies(String urlString) {
+        List<MovieSearchResult> searchResults = new ArrayList<>();
 
         HttpURLConnection conn = null;
         try {
@@ -80,18 +75,11 @@ public class MovieService {
                 JSONArray results = responseJson.getJSONArray("results");
 
                 for(Object movie : results) {
-                    JSONObject movieJsonObj = (JSONObject) movie;
+                    Integer id = ((JSONObject) movie).getInt("id");
+                    String title = ((JSONObject) movie).getString("title");
+                    String posterUrl = imageServerPath + ((JSONObject) movie).getString("poster_path");
 
-                    Long id = new Long((Integer) getJsonObjectValue(movieJsonObj, "id"));
-                    String title = "" + getJsonObjectValue(movieJsonObj, "title");
-                    String posterUrl = imageServerPath + getJsonObjectValue(movieJsonObj, "poster_path");
-                    String overview = "" + getJsonObjectValue(movieJsonObj, "overview");
-                    String releaseDate = "" + getJsonObjectValue(movieJsonObj, "release_date");
-
-                    if(!posterUrl.contains("null")) {
-                        searchResults.add(new Movie(id, title, null, posterUrl, overview, null, releaseDate,
-                                null, null));
-                    }
+                    searchResults.add(new MovieSearchResult(id, title, posterUrl));
                 }
             }
         } catch(Exception e) {
@@ -131,15 +119,14 @@ public class MovieService {
                 sc.close();
 
                 JSONObject responseJson = new JSONObject(responseString.toString());
-                String title = "" + getJsonObjectValue(responseJson, "title");
-                String imdbId = "" + getJsonObjectValue(responseJson, "imdb_id");
-                String posterUrl = imageServerPath + getJsonObjectValue(responseJson, "poster_path");
-                String overview = "" + getJsonObjectValue(responseJson, "overview");
-                Long runtime = getJsonObjectValue(responseJson, "runtime") != null ?
-                        new Long((Integer) getJsonObjectValue(responseJson, "runtime")): null;
-                String releaseDate = "" + getJsonObjectValue(responseJson, "release_date");
-                Long revenue = Long.parseLong("" + getJsonObjectValue(responseJson, "revenue"));
-                String releaseStatus = "" + getJsonObjectValue(responseJson, "status");
+                String title = responseJson.getString("title");
+                String imdbId = responseJson.getString("imdb_id");
+                String posterUrl = imageServerPath + responseJson.getString("poster_path");
+                String overview = responseJson.getString("overview");
+                Long runtime = responseJson.getLong("runtime");
+                String releaseDate = responseJson.getString("release_date");
+                Long revenue = responseJson.getLong("revenue");
+                String releaseStatus = responseJson.getString("status");
 
                 movie = new Movie(id, title, imdbId, posterUrl, overview, runtime, releaseDate, revenue, releaseStatus);
             }
@@ -151,14 +138,6 @@ public class MovieService {
             }
         }
         return movie;
-    }
-
-    private static Object getJsonObjectValue(JSONObject jsonObject, String key) {
-        Object value = null;
-        if(jsonObject.has(key) && !jsonObject.isNull(key)) {
-            value = jsonObject.get(key);
-        }
-        return value;
     }
 
 }
