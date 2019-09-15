@@ -10,7 +10,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
 @RestController
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = "*", allowCredentials = "true")
 public class UserController {
 
     private UserRepository userRepository;
@@ -44,5 +44,10 @@ public class UserController {
     @GetMapping("api/logout")
     public void logout(HttpSession session) {
         session.invalidate();
+    }
+
+    @DeleteMapping("api/user/{userId}")
+    public void deleteUser(@PathVariable("userId") Long userId) {
+        userRepository.delete(userRepository.findById(userId).get());
     }
 }

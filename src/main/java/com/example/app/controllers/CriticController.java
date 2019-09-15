@@ -1,36 +1,31 @@
 package com.example.app.controllers;
 
-import com.example.app.models.Critic;
-import com.example.app.models.Fan;
-import com.example.app.models.Movie;
-import com.example.app.models.Review;
+import com.example.app.models.*;
 import com.example.app.repositories.CriticRepository;
 import com.example.app.repositories.FanRepository;
 import com.example.app.repositories.MovieRepository;
-import com.example.app.repositories.ReviewRepository;
 import com.example.app.services.Utils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletResponse;
+import java.util.ArrayList;
 import java.util.List;
 
 @RestController
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = "*", allowCredentials = "true")
 public class CriticController extends Utils {
 
     private CriticRepository criticRepository;
     private MovieRepository movieRepository;
-    private ReviewRepository reviewRepository;
     private FanRepository fanRepository;
 
     @Autowired
     public CriticController(CriticRepository criticRepository, MovieRepository movieRepository,
-                            ReviewRepository reviewRepository, FanRepository fanRepository) {
+                            FanRepository fanRepository) {
         this.criticRepository = criticRepository;
         this.movieRepository = movieRepository;
-        this.reviewRepository = reviewRepository;
         this.fanRepository = fanRepository;
     }
 
@@ -52,7 +47,7 @@ public class CriticController extends Utils {
             @RequestParam(name = "password", required = false) String password) {
         if (username != null && password != null)
             return (List<Critic>) criticRepository.findCriticByCredentials(username, password);
-        return (List<Critic>) criticRepository.findAll();
+        return criticRepository.findAll();
     }
 
     @PostMapping("/api/recommend/critic/{username}/movie/{movieId}")
@@ -68,20 +63,22 @@ public class CriticController extends Utils {
         }
     }
 
-    @PostMapping("/api/reviews/critic/{username}/review/{reviewId}")
-    public void reviewMovie(
-            @PathVariable("username") String username,
-            @PathVariable("reviewId") long reviewId) {
-        if(criticRepository.findById(criticRepository.findCriticIdByUsername(username)).isPresent()
-                && reviewRepository.findById(reviewId).isPresent()) {
+    @PostMapping("/api/review/critic/{username}/movie/{movieId}")
+    public void reviewMovie(@PathVariable("username") String username,
+                            @PathVariable("movieId") Long movieId,
+                            @RequestBody Review review) {
+        if(movieRepository.findById(movieId).isPresent()
+                && criticRepository.findById(criticRepository.findCriticIdByUsername(username)).isPresent()) {
             Critic critic = criticRepository.findById(criticRepository.findCriticIdByUsername(username)).get();
-            Review review = reviewRepository.findById(reviewId).get();
+            Movie movie = movieRepository.findById(movieId).get();
+            review.setCritic(critic);
+            review.setRmovie(movie);
             critic.reviews(review);
             criticRepository.save(critic);
         }
     }
 
-    @GetMapping("/api/follow/critic/{username}/fanfollowing")
+    @GetMapping("/api/follow/critic/{username}/followedby")
     public List<Fan> listOfFansFollowing(
             @PathVariable("username") String username) {
         if(criticRepository.findById(criticRepository.findCriticIdByUsername(username)).isPresent()) {
@@ -92,7 +89,7 @@ public class CriticController extends Utils {
     }
 
     @GetMapping("/api/check/follow/fan/{fanUsername}/critic/{criticUsername}")
-    public Fan checkIfFanFollowsCritic(
+    public Boolean checkIfFanFollowsCritic(
             @PathVariable("fanUsername") String fanUsername,
             @PathVariable("criticUsername") String criticUsername) {
         if(criticRepository.findById(criticRepository.findCriticIdByUsername(criticUsername)).isPresent() &&
@@ -101,11 +98,28 @@ public class CriticController extends Utils {
             Fan fan = fanRepository.findById(fanRepository.findFanIdByUsername(fanUsername)).get();
             List <Fan> fanlist = critic.getFansFollowingCritics();
             if (fanlist.contains(fan)) {
-                return fan;
+                return true;
             }
         }
 
-        return null;
+        return false;
+    }
+
+    @GetMapping("/api/check/recommend/critic/{criticUsername}/movie/{movieId}")
+    public Boolean checkIfCriticRecommendMovie(
+            @PathVariable("criticUsername") String criticUsername,
+            @PathVariable("movieId") Long movieId) {
+        if(criticRepository.findById(criticRepository.findCriticIdByUsername(criticUsername)).isPresent() &&
+                movieRepository.findById(movieId).isPresent()) {
+            Critic critic = criticRepository.findById(criticRepository.findCriticIdByUsername(criticUsername)).get();
+            Movie movie = movieRepository.findById(movieId).get();
+            List <Movie> movies = critic.getRecommendedMovies();
+            if (movies.contains(movie)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     @GetMapping("/api/recommend/critic/{username}/recommendedmovies")
@@ -118,17 +132,31 @@ public class CriticController extends Utils {
         return null;
     }
 
-    @GetMapping("/api/critic/show/reviews/{username}")
-    public List<Review> listOfReviewsGiven(
-            @PathVariable("username") String username){
-        if(criticRepository.findById(criticRepository.findCriticIdByUsername(username)).isPresent()){
+    @GetMapping("/api/review/critic/{username}/reviewedmovies")
+    @ResponseBody
+    public List<ReviewJson> listOfReviewsGiven(@PathVariable("username") String username){
+        List<ReviewJson> result = new ArrayList<>();
+
+        if(criticRepository.findById(criticRepository.findCriticIdByUsername(username)).isPresent()) {
             Critic critic = criticRepository.findById(criticRepository.findCriticIdByUsername(username)).get();
-            return critic.getReviewedMovie();
+            List<Review> reviews = critic.getReviewedMovie();
+
+            for(Review r : reviews) {
+                ReviewJson reviewJson = new ReviewJson();
+                reviewJson.setReviewId(r.getReviewId());
+                reviewJson.setReview(r.getReview());
+                reviewJson.setRating(r.getRating());
+                reviewJson.setId(r.getRmovie().getId());
+                reviewJson.setTitle(r.getRmovie().getTitle());
+                reviewJson.setPosterUrl(r.getRmovie().getPosterUrl());
+                result.add(reviewJson);
+            }
         }
-        return null;
+
+        return result;
     }
 
-    @PostMapping("/api/delete/unfollow/critic/{username1}/fan/{username2}")
+    @DeleteMapping("/api/critic/{username1}/fan/{username2}")
     public void deleteFans(
             @PathVariable("username1") String username1,
             @PathVariable("username2") String username2){
@@ -142,8 +170,8 @@ public class CriticController extends Utils {
         }
     }
 
-    @PostMapping("/api/delete/recommend/critic/{criticName}/movie/{movieId}")
-    public void deleteRecommendMovie(
+    @PostMapping("/api/unrecommend/critic/{criticName}/movie/{movieId}")
+    public void undoRecommendMovie(
             @PathVariable("criticName") String criticName,
             @PathVariable("movieId") long movieId){
         if (criticRepository.findById(criticRepository.findCriticIdByUsername(criticName)).isPresent()
@@ -154,5 +182,14 @@ public class CriticController extends Utils {
             movie.getRecommendedBy().remove(critic);
             criticRepository.save(critic);
         }
+    }
+
+    @DeleteMapping("/api/review/critic/{criticName}/movie/{movieId}")
+    public void deleteReview(@PathVariable("criticName") String username,
+                             @PathVariable("movieId") Long movieId) {
+        Critic critic = criticRepository.findById(criticRepository.findCriticIdByUsername(username)).get();
+        Movie movie = movieRepository.findById(movieId).get();
+        critic.getReviewedMovie().remove(movie);
+        criticRepository.save(critic);
     }
 }
