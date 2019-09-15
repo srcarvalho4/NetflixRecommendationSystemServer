@@ -45,9 +45,9 @@ public class MovieService {
 
         urlString += "?api_key=" + apiKey;
         urlString += (lang != null) ? ("&language=" + lang) : "";
-        urlString += (region != null) ? ("&region=" + region) : "";
+//        urlString += (region != null) ? ("&region=" + region) : "";
         urlString += (query != null) ? ("&query=" + query) : "";
-        urlString += (pageNo != null) ? ("&page=" + pageNo) : "";
+//        urlString += (pageNo != null) ? ("&page=" + pageNo) : "";
 
         return getMovies(urlString);
     }
